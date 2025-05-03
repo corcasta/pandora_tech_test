@@ -28,7 +28,8 @@ def train_and_validate(
     valid_data_loader, 
     device,
     save_dir,
-    log_dir
+    log_dir,
+    model_name
 ):
     writer = SummaryWriter(log_dir=log_dir+"/tensorboard_log")
     history = []
@@ -85,7 +86,7 @@ def train_and_validate(
 
         if avg_valid_loss < best_loss:
             best_loss = avg_valid_loss
-            torch.save(model.state_dict(), save_dir + "/tcn_best.pt")
+            torch.save(model.state_dict(), save_dir + f"/{model_name}.pt")
             print("  → New best model saved")
 
         print(
@@ -98,109 +99,3 @@ def train_and_validate(
     return model, history
 
 
-
-"""
-def train_and_validate(
-    model, 
-    loss_criterion, 
-    optimizer, 
-    epochs, 
-    train_data_loader, 
-    valid_data_loader, 
-    device
-    ):
-    
-    '''
-    Function to train and validate
-    Parameters
-        :param model: Model to train and validate
-        :param loss_criterion: Loss Criterion to minimize
-        :param optimizer: Optimizer for computing gradients
-        :param epochs: Number of epochs (default=25)
-  
-    Returns
-        model: Trained Model with best validation accuracy
-        history: (dict object): Having training loss, accuracy and validation loss, accuracy
-    '''
-    
-    model = model.to(device)
-    start = time.time()
-    history = []
-    best_loss = np.inf 
-
-    for epoch in range(epochs):
-        epoch_start = time.time()
-        print("Epoch: {}/{}".format(epoch+1, epochs))
-        
-        # Set to training mode
-        model.train()
-        
-        # Loss and Accuracy within the epoch
-        train_loss = 0.0
-        
-        for inputs, labels in tqdm(train_data_loader, desc="Training", leave=False):
-            inputs, labels = batch_preprocessing(inputs, labels)
-            inputs = inputs.to(device).float()
-            labels = labels.to(device).float()
-            
-            # Clean existing gradients
-            optimizer.zero_grad()
-            
-            # Forward pass - compute outputs on input data using the model
-            outputs = model(inputs.float())
-
-            # Compute loss
-            loss = loss_criterion(outputs, labels) #.to(torch.float32)
-            
-            # Backpropagate the gradients
-            loss.backward()
-            
-            # Update the parameters
-            optimizer.step()
-            
-            # Compute the total loss for the batch and add it to train_loss
-            train_loss += loss.item() #* inputs.size(0)
-
-            # Compute the accuracy
-            
-        # Set to evaluation mode
-        model.eval()
-        valid_loss = 0.0,
-        with torch.no_grad():
-            # Validation loop
-            for inputs, labels in tqdm(valid_data_loader, desc=Valid, leave=False):
-                inputs, labels = batch_preprocessing(inputs, labels)
-                inputs = inputs.to(device).float()
-                labels = labels.to(device).float()
-
-                # Forward pass - compute outputs on input data using the model
-                outputs = model(inputs.cuda().float())
-
-                # Compute loss
-                loss = loss_criterion(outputs, labels)
-
-                # Compute the total loss for the batch and add it to valid_loss
-                valid_loss += loss.item()# * inputs.size(0)
-
-        
-        # Find average training loss and training accuracy
-        avg_train_loss = train_loss/len(train_data_loader) 
-
-        # Find average training loss and training accuracy
-        avg_valid_loss = valid_loss/len(valid_data_loader) 
-
-        history.append([avg_train_loss, avg_valid_loss])        
-        epoch_end = time.time()
-        
-        if avg_valid_loss < best_loss:
-            print("New best model saved")
-            best_loss = avg_valid_loss
-            torch.save(model.state_dict(), 'slippage_model_bw.pt')
-            
-        print("Epoch : {:03d}, Training: Loss: {:.4f}, \n\t\tValidation : Loss : {:.4f}, Time: {:.4f}s".format(epoch+1, avg_train_loss, avg_valid_loss, epoch_end-epoch_start))
-  
-        # Save if the model has best accuracy till now
-        #torch.save(model, dataset+'_model_'+str(epoch)+'.pt')
-    #writer.close()      
-    return model, history
-"""

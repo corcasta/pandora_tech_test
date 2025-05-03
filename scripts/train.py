@@ -28,9 +28,8 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # DATA PARAMS
 DATASET_PATH = str(Path(os.getcwd()).parent) + "/data"
 
-def log_train_state(log_dir, train_df, valid_df, train_dataset, valid_dataset):
+def log_train_state(log_dir: str, train_df: pd.DataFrame, valid_df: pd.DataFrame, train_dataset: TimeSeriesDataSet):
     td = train_dataset.get_parameters()
-
     info = {
         "train_params":{
             "batch_size": BATCH_SIZE,
@@ -103,8 +102,8 @@ def main():
         scalers=scalers_dict,
     ) 
     
- 
-    log_train_state(log_dir, train_df, valid_df, train_dataset, valid_dataset)
+    # Create log dirs
+    log_train_state(log_dir, train_df, valid_df, train_dataset)
     
     
     # Dataloaders definition: Train & Valid
@@ -131,7 +130,8 @@ def main():
         valid_dataloader, 
         DEVICE,
         save_model_dir,
-        log_dir
+        log_dir,
+        model_name=f"tcn_{time_string}"
     )
 
 if __name__ == "__main__":
