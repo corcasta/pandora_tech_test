@@ -11,6 +11,8 @@ from torch import nn, optim
 from pathlib import Path
 import pandas as pd
 import torch
+import time
+import json
 
 # MODEL PARAMS
 MIN_ENCODER_LENGTH    = 8
@@ -26,8 +28,43 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # DATA PARAMS
 DATASET_PATH = str(Path(os.getcwd()).parent) + "/data"
 
+def log_train_state(log_dir, train_df, valid_df, train_dataset, valid_dataset):
+    td = train_dataset.get_parameters()
+
+    info = {
+        "train_params":{
+            "batch_size": BATCH_SIZE,
+            "epochs": EPOCHS,
+            "learning_rate": LEARNING_RATE,
+        },
+        "model_params":{
+            "min_encoder_length": MIN_ENCODER_LENGTH,
+            "max_encoder_length": MAX_ENCODER_LENGTH,
+            "max_prediction_length": MAX_PREDICTION_LENGTH,
+        },
+        "train_dataframe": dict(
+            zip(train_df.dtypes.reset_index()["index"], train_df.dtypes.reset_index()[0].astype("str"))
+        ),
+        "valid_dataframe": dict(
+            zip(valid_df.dtypes.reset_index()["index"], valid_df.dtypes.reset_index()[0].astype("str"))
+        ),
+        "time_varying_unknown_reals": td["time_varying_unknown_reals"]
+    }
+    
+    
+    with open(log_dir+'/train_state.json', 'w') as f:
+        json.dump(info, f, indent=4)
+
 
 def main():
+    # Logs folder creation
+    named_tuple = time.localtime()
+    time_string = time.strftime("%Y_%m_%d_%H_%M_%S", named_tuple)
+    log_dir = proj_root+f"/logs/run_{time_string}" 
+    os.mkdir(log_dir)
+    os.mkdir(log_dir+"/tensorboard_log")
+    
+    # Load datasets
     train_df = pd.read_csv(DATASET_PATH + "/train_data.csv")
     valid_df = pd.read_csv(DATASET_PATH + "/valid_data.csv")
     
@@ -66,6 +103,10 @@ def main():
         scalers=scalers_dict,
     ) 
     
+ 
+    log_train_state(log_dir, train_df, valid_df, train_dataset, valid_dataset)
+    
+    
     # Dataloaders definition: Train & Valid
     train_dataloader = train_dataset.to_dataloader(batch_size=BATCH_SIZE)
     valid_dataloader = valid_dataset.to_dataloader(batch_size=BATCH_SIZE)
@@ -73,7 +114,6 @@ def main():
 
     train_sample_x, train_sample_y = next(iter(train_dataloader))
 
-    
     model = TCNPredictor(input_size=len(input_features)+1, 
                          seq_len=MAX_ENCODER_LENGTH, 
                          output_size=MAX_PREDICTION_LENGTH).to(DEVICE)
@@ -81,7 +121,7 @@ def main():
     loss_fn = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     
-    save_model_path = proj_root + "/models/weights"
+    save_model_dir = proj_root + "/models/weights"
     trained_model, history = train_and_validate(
         model, 
         loss_fn, 
@@ -90,7 +130,8 @@ def main():
         train_dataloader, 
         valid_dataloader, 
         DEVICE,
-        save_model_path
+        save_model_dir,
+        log_dir
     )
 
 if __name__ == "__main__":

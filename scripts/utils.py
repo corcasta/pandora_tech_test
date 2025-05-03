@@ -27,9 +27,10 @@ def train_and_validate(
     train_data_loader, 
     valid_data_loader, 
     device,
-    save_path
+    save_dir,
+    log_dir
 ):
-    writer = SummaryWriter(log_dir=proj_root+"/logs")
+    writer = SummaryWriter(log_dir=log_dir+"/tensorboard_log")
     history = []
     best_loss = np.inf 
     model = model.to(device)
@@ -84,7 +85,7 @@ def train_and_validate(
 
         if avg_valid_loss < best_loss:
             best_loss = avg_valid_loss
-            torch.save(model.state_dict(), save_path + "/tcn_best.pt")
+            torch.save(model.state_dict(), save_dir + "/tcn_best.pt")
             print("  → New best model saved")
 
         print(
