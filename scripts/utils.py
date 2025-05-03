@@ -1,6 +1,13 @@
+import os, sys
+proj_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if proj_root not in sys.path:
+    sys.path.insert(0, proj_root)
+    
+from torch.utils.tensorboard import SummaryWriter
 from torch import nn, optim
 from tqdm import tqdm
 import numpy as np
+import torch
 import time
 
 
@@ -11,10 +18,6 @@ def batch_preprocessing(x, y, batch_first=True):
         x_input = x_input.permute([1, 0, 2])
     return x_input, y_input
 
-import time
-import numpy as np
-import torch
-from tqdm import tqdm
 
 def train_and_validate(
     model, 
@@ -23,12 +26,14 @@ def train_and_validate(
     epochs, 
     train_data_loader, 
     valid_data_loader, 
-    device
+    device,
+    save_path
 ):
-    model = model.to(device)
+    writer = SummaryWriter(log_dir=proj_root+"/logs")
     history = []
     best_loss = np.inf 
-
+    model = model.to(device)
+    
     for epoch in range(1, epochs+1):
         print(f"\nEpoch {epoch}/{epochs}")
         epoch_start = time.time()
@@ -53,7 +58,8 @@ def train_and_validate(
             train_pbar.set_postfix(train_loss=loss.item())
 
         avg_train_loss = train_loss / len(train_data_loader)
-
+        writer.add_scalar("Loss/Train", avg_train_loss, epoch)
+        
         # ——— VALIDATION ———
         model.eval()
         valid_loss = 0.0
@@ -70,14 +76,15 @@ def train_and_validate(
                 valid_pbar.set_postfix(valid_loss=loss.item())
 
         avg_valid_loss = valid_loss / len(valid_data_loader)
-
+        writer.add_scalar("Loss/Validation", avg_valid_loss, epoch)
+        
         # ——— LOG & SAVE ———
         elapsed = time.time() - epoch_start
         history.append((avg_train_loss, avg_valid_loss))
 
         if avg_valid_loss < best_loss:
             best_loss = avg_valid_loss
-            torch.save(model.state_dict(), "slippage_model_bw.pt")
+            torch.save(model.state_dict(), save_path + "/tcn_best.pt")
             print("  → New best model saved")
 
         print(
@@ -86,7 +93,7 @@ def train_and_validate(
             f"Valid Loss: {avg_valid_loss:.4f} | "
             f"Time: {elapsed:.1f}s"
         )
-
+    writer.close()
     return model, history
 
 
