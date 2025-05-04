@@ -84,7 +84,8 @@ These features are fed to the model for inference. The aggregation level at this
 | Window_Mean_6   | Rolling average of sales or quantity over the past 6 weeks         |
 | Window_Mean_7   | Rolling average of sales or quantity over the past 7 weeks         |
 
-This is an example:
+This is an example:  
+
 ![feature_eng](https://github.com/corcasta/pandora_tech_test/blob/dev/images/fe.png?raw=true)
 
 
