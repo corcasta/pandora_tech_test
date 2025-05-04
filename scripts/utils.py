@@ -209,7 +209,7 @@ def train_and_validate(model: torch.nn.Module,
         print(f"\nEpoch {epoch}/{epochs}")
         epoch_start = time.time()
 
-        # ——— TRAINING ———
+        # ------------ TRAINING ------------ 
         model.train()
         train_loss = 0.0
         train_pbar = tqdm(train_data_loader, desc="Train", leave=False)
@@ -231,7 +231,7 @@ def train_and_validate(model: torch.nn.Module,
         avg_train_loss = train_loss / len(train_data_loader)
         writer.add_scalar("Loss/Train", avg_train_loss, epoch)
         
-        # ——— VALIDATION ———
+        # ------------  VALIDATION ------------ 
         model.eval()
         valid_loss = 0.0
         valid_pbar = tqdm(valid_data_loader, desc="Validation", leave=False)
