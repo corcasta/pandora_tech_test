@@ -6,10 +6,92 @@ if proj_root not in sys.path:
 from torch.utils.tensorboard import SummaryWriter
 from torch import nn, optim
 from tqdm import tqdm
+import pandas as pd
 import numpy as np
 import torch
 import time
 
+IDS_MAP = {
+    ('Beauty', 25): 0,
+    ('Beauty', 30): 1,
+    ('Beauty', 50): 2,
+    ('Beauty', 300): 3,
+    ('Beauty', 500): 4,
+    ('Clothing', 25): 5,
+    ('Clothing', 30): 6,
+    ('Clothing', 50): 7,
+    ('Clothing', 300): 8,
+    ('Clothing', 500): 9,
+    ('Electronics', 25): 10,
+    ('Electronics', 30): 11,
+    ('Electronics', 50): 12,
+    ('Electronics', 300): 13,
+    ('Electronics', 500): 14
+ }
+
+COLS_ORDER = [
+    "Total_Amount", "Age", "Male", "Female", "Quantity",
+    "Price_per_Unit", "Year", "Month", "Week",
+    "Window_Mean_4", "Window_Mean_5", "Window_Mean_6", "Window_Mean_7"
+]
+
+def df_to_numpy(df: pd.DataFrame, products_ids: list):
+    # This will only work if all product series are same length
+    # WHICH they HAVE TO BE!
+    temp_list = []
+    for id in products_ids:
+        df_id = df.loc[df["Product_ID"] == id, COLS_ORDER]
+        temp_list.append(df_id.iloc[-8:,:].to_numpy()[np.newaxis,:,:])
+    return np.concatenate(temp_list, axis=0)
+    
+
+def batch_extraction(df: pd.DataFrame, products_ids: list[int]):
+    df["Date"] = pd.DatetimeIndex(df["Date"])
+    # Renaming Columns
+    new_column_names = []
+    for name in df.columns:
+        new_column_names.append(name.replace(" ", "_"))    
+    df.columns = new_column_names
+
+    for gender in ["Male", "Female"]:
+        df[gender] = (df["Gender"] == gender).astype(int)
+            
+    df["Product_ID"] = 0
+    df_prods_list = []
+    agg_dict = {
+        "Age": "median",
+        "Male": "sum",
+        "Female": "sum",
+        "Quantity": "sum",
+        "Total_Amount": "sum"
+    }
+    
+    for id, (category, price) in enumerate(IDS_MAP.keys()):
+        df_product = df.loc[(df["Product_Category"] == category) & (df["Price_per_Unit"] == price)].sort_values(by=["Date"])
+        df_product = df_product.groupby([pd.Grouper(key="Date", freq="W-Mon")]).agg(agg_dict).reset_index()
+        
+        df_product["Product_ID"] = id
+        df_product["Product_Category"] = category
+        df_product["Price_per_Unit"] = price
+        df_product = df_product.fillna(0)
+        
+        df_product["Time_Unitless"] = [i for i in range(len(df_product))]
+        df_product["Year"] = df_product["Date"].dt.year
+        df_product["Month"] = df_product["Date"].dt.month
+        df_product["Week"] = df_product["Date"].dt.isocalendar().week
+        df_product.pop("Date")
+        
+        individual_windows = 4
+        for window in range(4, individual_windows+4):
+            df_product[f"Window_Mean_{window}"] = df_product["Total_Amount"].rolling(window, ).mean().bfill().ffill().round(2)
+            #window_columns.append(f"Window_Mean_{window}")
+        df_prods_list.append(df_product.iloc[-8:])
+    
+    df_final = pd.concat(df_prods_list, ignore_index=True)
+    df_final = df_to_numpy(df_final, products_ids)     
+    
+    return df_final
+    
 
 def batch_preprocessing(x, y, batch_first=True):
     x_input = x["encoder_cont"]
