@@ -39,3 +39,8 @@ class TCNPredictor(nn.Module):
         x = self.flat(x)
         x = self.linear(x)
         return self.activ(x)
+    
+    def predict(self, x):
+      x = self.forward(x).detach()
+      print(x)
+      return x
