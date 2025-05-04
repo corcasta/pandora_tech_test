@@ -120,7 +120,7 @@ To make the process easier for the client, the API accepts a CSV file upload as 
 - **Product identification**: Clients must refer to a predefined list of product IDs to correctly populate the product_id field in the metadata. This mapping ensures clarity about which product is being forecasted when interpreting the results. If ID is not properly defined you will not receive a forecast. 
 
 These trade-offs were made to balance simplicity on the client side with accuracy and clarity in the forecasting output.
-#### Get all items
+#### Routes
 
 ```http
   POST /predict
@@ -185,6 +185,7 @@ Response example format:
   'week_2': '61.97812',
   'week_3': '0.0'}}
 ```
+
 
 ##  Extra Comment
 - The current implementation store api metric logs and train state logs.
