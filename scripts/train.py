@@ -1,18 +1,16 @@
-import os, sys
-proj_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if proj_root not in sys.path:
-    sys.path.insert(0, proj_root)
     
 from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting import TimeSeriesDataSet
 from scripts.utils import train_and_validate
 from models.tcn import TCNPredictor
+from config import PROJECT_ROOT
 from torch import nn, optim
-from pathlib import Path
+from config import DEVICE
 import pandas as pd
-import torch
+#import torch
 import time
 import json
+import os
 
 # MODEL PARAMS
 MIN_ENCODER_LENGTH    = 8
@@ -23,12 +21,12 @@ MAX_PREDICTION_LENGTH = 4
 BATCH_SIZE = 4
 EPOCHS = 100
 LEARNING_RATE = 0.001
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # DATA PARAMS
-DATASET_PATH = str(Path(os.getcwd()).parent) + "/data"
+DATASET_PATH = PROJECT_ROOT + "/data"
 
-def log_train_state(log_dir: str, train_df: pd.DataFrame, valid_df: pd.DataFrame, train_dataset: TimeSeriesDataSet):
+def log_training_state(log_dir: str, train_df: pd.DataFrame, valid_df: pd.DataFrame, train_dataset: TimeSeriesDataSet):
     td = train_dataset.get_parameters()
     info = {
         "train_params":{
@@ -50,7 +48,6 @@ def log_train_state(log_dir: str, train_df: pd.DataFrame, valid_df: pd.DataFrame
         "time_varying_unknown_reals": td["time_varying_unknown_reals"]
     }
     
-    
     with open(log_dir+'/train_state.json', 'w') as f:
         json.dump(info, f, indent=4)
 
@@ -59,7 +56,7 @@ def main():
     # Logs folder creation
     named_tuple = time.localtime()
     time_string = time.strftime("%Y_%m_%d_%H_%M_%S", named_tuple)
-    log_dir = proj_root+f"/logs/run_{time_string}" 
+    log_dir = PROJECT_ROOT+f"/logs/train_logs/run_{time_string}" 
     os.mkdir(log_dir)
     os.mkdir(log_dir+"/tensorboard_log")
     
@@ -103,15 +100,14 @@ def main():
     ) 
     
     # Create log dirs
-    log_train_state(log_dir, train_df, valid_df, train_dataset)
+    log_training_state(log_dir, train_df, valid_df, train_dataset)
     
     
     # Dataloaders definition: Train & Valid
     train_dataloader = train_dataset.to_dataloader(batch_size=BATCH_SIZE)
     valid_dataloader = valid_dataset.to_dataloader(batch_size=BATCH_SIZE)
 
-
-    train_sample_x, train_sample_y = next(iter(train_dataloader))
+    #train_sample_x, train_sample_y = next(iter(train_dataloader))
 
     model = TCNPredictor(input_size=len(input_features)+1, 
                          seq_len=MAX_ENCODER_LENGTH, 
@@ -120,7 +116,7 @@ def main():
     loss_fn = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     
-    save_model_dir = proj_root + "/models/weights"
+    save_model_dir = PROJECT_ROOT + "/models/weights"
     trained_model, history = train_and_validate(
         model, 
         loss_fn, 

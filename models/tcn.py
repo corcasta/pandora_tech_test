@@ -42,5 +42,4 @@ class TCNPredictor(nn.Module):
     
     def predict(self, x):
       x = self.forward(x).detach()
-      print(x)
       return x

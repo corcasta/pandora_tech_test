@@ -1,0 +1,63 @@
+{
+    "train_params": {
+        "batch_size": 4,
+        "epochs": 100,
+        "learning_rate": 0.001
+    },
+    "model_params": {
+        "min_encoder_length": 8,
+        "max_encoder_length": 8,
+        "max_prediction_length": 4
+    },
+    "train_dataframe": {
+        "Age": "float64",
+        "Male": "int64",
+        "Female": "int64",
+        "Quantity": "int64",
+        "Total_Amount": "int64",
+        "Product_ID": "int64",
+        "Product_Category": "object",
+        "Price_per_Unit": "int64",
+        "Time_Unitless": "int64",
+        "Year": "int64",
+        "Month": "int64",
+        "Week": "int64",
+        "Window_Mean_4": "float64",
+        "Window_Mean_5": "float64",
+        "Window_Mean_6": "float64",
+        "Window_Mean_7": "float64"
+    },
+    "valid_dataframe": {
+        "Age": "float64",
+        "Male": "int64",
+        "Female": "int64",
+        "Quantity": "int64",
+        "Total_Amount": "int64",
+        "Product_ID": "int64",
+        "Product_Category": "object",
+        "Price_per_Unit": "int64",
+        "Time_Unitless": "int64",
+        "Year": "int64",
+        "Month": "int64",
+        "Week": "int64",
+        "Window_Mean_4": "float64",
+        "Window_Mean_5": "float64",
+        "Window_Mean_6": "float64",
+        "Window_Mean_7": "float64"
+    },
+    "time_varying_unknown_reals": [
+        "Total_Amount",
+        "Age",
+        "Male",
+        "Female",
+        "Quantity",
+        "Price_per_Unit",
+        "Year",
+        "Month",
+        "Week",
+        "Window_Mean_4",
+        "Window_Mean_5",
+        "Window_Mean_6",
+        "Window_Mean_7"
+    ]
+}

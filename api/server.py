@@ -1,30 +1,32 @@
-import os, sys
-proj_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if proj_root not in sys.path:
-    sys.path.insert(0, proj_root)
-
-from starlette.datastructures import FormData, UploadFile
-from fastapi import HTTPException, status
+from config import (PROJECT_ROOT, DEVICE, 
+                    MODEL_WEIGHTS, NUM_FEATURES, 
+                    SEQ_LEN, OUT_LEN)
 from scripts.utils import batch_extraction
+from fastapi import HTTPException, status
 from models.tcn import TCNPredictor
 import litserve as ls 
 import pandas as pd
-import numpy as np
 import torch
 import json
+import time
 
-RUN = "2025_05_04_11_11_35" #"2025_05_03_22_24_58"
-MODEL_WEIGHTS = proj_root+f"/models/weights/tcn_{RUN}.pt"
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
+class SimpleLogger(ls.Logger):
+    def process(self, key, value):
+        print(f"Received {key} with value {value}", flush=True)
+
+class FileLogger(ls.Logger):
+    def process(self, key, value):
+        with open(PROJECT_ROOT+"/logs/api_logs/litserve_metrics.log", "a+") as f:
+            f.write(f"{key}: {value:.1f}\n")
+       
 class ForecastAPI(ls.LitAPI):
     def setup(self, device):
         self.device = device
-        self.model = TCNPredictor(input_size=13, seq_len=8, output_size=4).to(device)
-        self.model.load_state_dict(torch.load(MODEL_WEIGHTS, weights_only=True))
+        self.model = TCNPredictor(NUM_FEATURES, SEQ_LEN, OUT_LEN).to(device)
+        self.model.load_state_dict(torch.load(MODEL_WEIGHTS, weights_only=True, map_location=device))
         self.model.eval()
     
-
     def decode_request(self, request, **kwargs):
         if "metadata" not in request:
             raise HTTPException(
@@ -86,41 +88,30 @@ class ForecastAPI(ls.LitAPI):
         
         # Each sample in the batch follows same order as self.product_ids :)
         batch = batch_extraction(df, self.product_ids)
-        print("decode_request_step")
-        print(batch)
         return batch
     
-    #def batch(self, inputs):
-    #    return inputs
-    
     def predict(self, x, **kwargs):
-        predictions = self.model.predict(x.to(DEVICE))
-        print("predict_step")
-        print(predictions.shape)
-        return predictions
-    
-    #def unbatch(self, output):
-    #    return output
+        t0 = time.time()
+        prediction = self.model.predict(x.to(self.device))
+        t1 = time.time()
+        self.log("model_time", t1 - t0)
+        return prediction
     
     def encode_response(self, output, **kwargs):
-        print("encode_response_step")
+        """Convert model output tensor into a JSON-serializable dict."""
         if self.device != "cpu":
             output = output.cpu().numpy()
         else:
             output = output.numpy()
-        
-        product_output = {}
-        for i, product_id in enumerate(self.product_ids):
-            weeks_output = {}
+        response = {}
+        for idx, product_id in enumerate(self.product_ids):
+            week_data = {}
             for week in range(output.shape[1]):
-                weeks_output["week_"+str(week)] = str(output[i,week]) 
-            product_output[str(product_id)] = weeks_output
-
-        print("almost_done")
-        print(product_output)
-        return product_output
+                week_data[f"week_{week}"] = str(output[idx, week])
+            response[str(product_id)] = week_data
+        return response
 
 if __name__ == "__main__":
     api = ForecastAPI()
-    server = ls.LitServer(api, accelerator=DEVICE)
-    server.run(port=8000)
+    server = ls.LitServer(api, accelerator=DEVICE, loggers=[SimpleLogger(), FileLogger()])
+    server.run(port=8000, generate_client_file=False)
