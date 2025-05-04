@@ -4,6 +4,17 @@ A lightweight forecasting service using LitServe and Docker to predict weekly sa
 
 ---
 
+| Path                  | Description                                      |
+|-----------------------|--------------------------------------------------|
+| `api/`                | API-related code (server endpoint definitions)        |
+| `data/`               | Raw and processed datasets                       |
+| `images/`             | Visual assets and plots                          |
+| `logs/`               | Log files from training or inference             |
+| `models/`             | Trained model artifacts                          |
+| `notebooks/`          | Jupyter notebooks for exploration and analysis   |
+| `scripts/`            | Utility and helper scripts                       |
+
+
 ## 🔧 Setup Instructions
 
 By following these steps, you will have a LitServe server running and ready for inference:
@@ -25,10 +36,7 @@ By following these steps, you will have a LitServe server running and ready for 
     docker run -p 8000:8000 pandora-forecasting-model:latest
     ```
 
-4. **Run inference**
-    ```
-    python inference.py
-    ```
+
 
 ## 🧠 Considerations
 Based on the provided Excel/data, a few assumptions were made:
