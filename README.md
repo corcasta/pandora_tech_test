@@ -35,7 +35,10 @@ By following these steps, you will have a LitServe server running and ready for 
     ```
     docker run -p 8000:8000 pandora-forecasting-model:latest
     ```
-
+4. **Launch Tensorboard**
+    ```
+    tensorboard --logdir= ./logs/train_logs/{CHOOSE_YOUR_RUN}
+    ```
 
 
 ## 🧠 Considerations
@@ -104,13 +107,17 @@ A simple Temporal Convolutional Network (TCN) was used for forecasting because:
 - It uses dilated causal convolutions to capture dependencies over time.
 ![tcn](https://github.com/corcasta/pandora_tech_test/blob/dev/images/tcn.png?raw=true)
 
+## 📊 Results
+Here we can see a couple of predictions from the model, while I could evaluate the model using many metrics such as MAPE, MSE, MAE, WAPE. I decided to stay simple and go for the MAPE. In this run we got around 19.87%. This is relative to how we weight different products and prediction horizons.
+![results](https://github.com/corcasta/pandora_tech_test/blob/dev/images/results.png?raw=true)
+
 
 ## 🔌 API Reference
 **Note**: The API was intentionally kept simple, with a single route to retrieve forecast information. Currently, a single model has been trained to predict forecasts at the SKU level, which results in a straightforward request format.
 
 To make the process easier for the client, the API accepts a CSV file upload as input. This approach simplifies data handling, but comes with two main considerations:
-- **Input requirements**: The uploaded CSV must contain exactly 8 weeks of historical sales data for each product to ensure accurate forecasting.
-- **Product identification**: Clients must refer to a predefined list of product IDs to correctly populate the product_id field in the metadata. This mapping ensures clarity about which product is being forecasted when interpreting the results.
+- **Input requirements**: The uploaded CSV must contain at least 8 weeks-M of historical sales data for each product to ensure accurate forecasting. The more historical data prvided, the better.
+- **Product identification**: Clients must refer to a predefined list of product IDs to correctly populate the product_id field in the metadata. This mapping ensures clarity about which product is being forecasted when interpreting the results. If ID is not properly defined you will not receive a forecast. 
 
 These trade-offs were made to balance simplicity on the client side with accuracy and clarity in the forecasting output.
 #### Get all items
@@ -124,11 +131,11 @@ These trade-offs were made to balance simplicity on the client side with accurac
 
 | Name       | Type   | Required | Description                                                                                                    |
 | ---------- | ------ | -------- | -------------------------------------------------------------------------------------------------------------- |
-| `file`     | file   | Yes      | CSV file containing **exactly 8 rows** of continuous historical weekly sales for **EACH** product. Field name **must** be `file`.               |
+| `file`     | file   | Yes      | CSV file containing **>= 8 rows** of continuous historical weekly sales for **EACH** product. Field name **must** be `file`.               |
 | `metadata` | string | Yes      | JSON-encoded string with array describing each SKU in the CSV. See “Metadata JSON” below for schema. |
 
 #### file
-The CSV file must contain 8 weeks of historical data for each product. The granularity and the fields of the file must be the exact same as the excel provided in the email.
+The CSV file must contain >= 8 weeks-M of historical data for each product. The granularity and the fields of the file must be the exact same as the excel provided in the email.
 
 #### Metadata JSON
 
@@ -147,18 +154,20 @@ Example when requesting a forecast for 3 products
 }
 ```
 
-Python API request example
+#### Python API request example  
+If you download the demo.csv inside data directory and run the following snippet, you will get a response.
 ```python
+import requests
+import json
+
 url = "http://localhost:8000/predict"
 data = {
-    'metadata': json.dumps({
-        "product_id": [0]
-    })
+    'metadata': json.dumps({"product_id": [2]})
 }
 files = {
     "file": (
         "data.csv",           
-        open("/home/corcasta/projects/pandora_interview/data/sales_data.csv", "rb"), 
+        open("demo.csv", "rb"), 
         "text/csv"              
     )
 }
@@ -177,7 +186,14 @@ Response example format:
   'week_3': '0.0'}}
 ```
 
-## 🧩 Scaling to Production
+##  Extra Comment
+- The current implementation store api metric logs and train state logs.
+- The code implementation allows to swap to any model or architecture as long as the output characteristics stays the same.
+
+## 🔍 Production Enhancements
+To keep track of model states, datasets, metrics, and more, a useful tool is MLflow. It simplifies version control for models, making reproducibility more efficient. Another improvement would be to visualize the performance of each model through meaningful charts and dashboards, helping to better understand and compare results.
+
+## 📈 Scaling to Production
 The beauty of using LitServe lies in how effortlessly it scales in production. You can simply define the number of workers and specify how many model instances to run and on which devices (CPU or GPU). Distributed execution across multiple machines is also supported just enable the appropriate settings.
 
 **LitServe** also allows flexible request processing strategies: you can choose between batching, parallel execution, or streaming, depending on your needs.
