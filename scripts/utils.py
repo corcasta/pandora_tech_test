@@ -29,20 +29,27 @@ IDS_MAP = {
     ('Electronics', 500): 14
  }
 
+PRODUCT_IDS = [i for i in range(len(IDS_MAP))]
+
 COLS_ORDER = [
     "Total_Amount", "Age", "Male", "Female", "Quantity",
     "Price_per_Unit", "Year", "Month", "Week",
     "Window_Mean_4", "Window_Mean_5", "Window_Mean_6", "Window_Mean_7"
 ]
 
-def df_to_numpy(df: pd.DataFrame, products_ids: list):
+def df_to_tensor(df: pd.DataFrame, products_ids: list):
     # This will only work if all product series are same length
     # WHICH they HAVE TO BE!
     temp_list = []
     for id in products_ids:
+        
         df_id = df.loc[df["Product_ID"] == id, COLS_ORDER]
         temp_list.append(df_id.iloc[-8:,:].to_numpy()[np.newaxis,:,:])
-    return np.concatenate(temp_list, axis=0)
+    
+    # Each sample in the batch follows same order as product_ids :)
+    ts = np.concatenate(temp_list, axis=0).astype(float)
+    ts = torch.from_numpy(ts).float()
+    return ts
     
 
 def batch_extraction(df: pd.DataFrame, products_ids: list[int]):
@@ -87,10 +94,8 @@ def batch_extraction(df: pd.DataFrame, products_ids: list[int]):
             #window_columns.append(f"Window_Mean_{window}")
         df_prods_list.append(df_product.iloc[-8:])
     
-    df_final = pd.concat(df_prods_list, ignore_index=True)
-    df_final = df_to_numpy(df_final, products_ids)     
-    
-    return df_final
+    df_final = pd.concat(df_prods_list, ignore_index=True)    
+    return df_to_tensor(df_final, products_ids)
     
 
 def batch_preprocessing(x, y, batch_first=True):

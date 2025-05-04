@@ -21,7 +21,7 @@ MAX_PREDICTION_LENGTH = 4
 
 # TRAINING PARAMS
 BATCH_SIZE = 4
-EPOCHS = 400
+EPOCHS = 100
 LEARNING_RATE = 0.001
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
