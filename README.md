@@ -85,8 +85,7 @@ These features are fed to the model for inference. The aggregation level at this
 | Window_Mean_7   | Rolling average of sales or quantity over the past 7 weeks         |
 
 This is an example:
-![fe](![Logo](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/th5xamgrr6se0x5ro4g6.png)
-)
+![feature_eng](https://github.com/corcasta/pandora_tech_test/blob/dev/images/fe.png?raw=true)
 
 
 ## 🏗️ Model Architecture
@@ -94,3 +93,4 @@ A simple Temporal Convolutional Network (TCN) was used for forecasting because:
 - It performs well with **limited data**.
 - It’s effective at detecting temporal patterns.
 - It uses dilated causal convolutions to capture dependencies over time.
+![tcn](https://github.com/corcasta/pandora_tech_test/blob/dev/images/tcn.png?raw=true)
