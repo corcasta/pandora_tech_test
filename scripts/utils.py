@@ -58,6 +58,7 @@ def df_to_tensor(df: pd.DataFrame, products_ids: list) -> torch.Tensor:
     for id in products_ids:
         
         df_id = df.loc[df["Product_ID"] == id, COLS_ORDER]
+        print(len(df_id))
         temp_list.append(df_id.iloc[-8:,:].to_numpy()[np.newaxis,:,:])
     
     # Each sample in the batch follows same order as product_ids :)

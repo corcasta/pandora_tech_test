@@ -125,6 +125,12 @@ class ForecastAPI(ls.LitAPI):
         
         # Each sample in the batch follows same order as self.product_ids :)
         batch = batch_extraction(df, self.product_ids)
+        print(batch.shape)
+        if tuple(batch.shape[1:]) != (8, 13):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Not enough consecutive weeks, it requires minimum 8."
+            )
         return batch
     
     def predict(self, x: torch.Tensor, **kwargs) -> np.ndarray:
