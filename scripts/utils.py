@@ -1,8 +1,3 @@
-#import os, sys
-#PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-#if PROJECT_ROOT not in sys.path:
-#    sys.path.insert(0, PROJECT_ROOT)
-
 from torch.utils.tensorboard import SummaryWriter
 from config import PROJECT_ROOT
 from torch import nn, optim
@@ -30,15 +25,33 @@ IDS_MAP = {
     ('Electronics', 500): 14
  }
 
-PRODUCT_IDS = [i for i in range(len(IDS_MAP))]
-
 COLS_ORDER = [
     "Total_Amount", "Age", "Male", "Female", "Quantity",
     "Price_per_Unit", "Year", "Month", "Week",
     "Window_Mean_4", "Window_Mean_5", "Window_Mean_6", "Window_Mean_7"
 ]
 
-def df_to_tensor(df: pd.DataFrame, products_ids: list):
+def df_to_tensor(df: pd.DataFrame, products_ids: list) -> torch.Tensor:
+    """
+    Convert a DataFrame of product time series into a batched PyTorch tensor.
+    This function extracts the last 8 time steps of each product’s series from 
+    the DataFrame, orders them according to the provided `product_ids` list, 
+    and returns a 3D tensor of shape (batch_size, sequence_length, num_features).
+
+    Args:
+        df (pd.DataFrame): Input DataFrame containing time series data for 
+                           multiple products.
+        products_ids (list): List of product IDs specifying which series to 
+                             include and in what order.
+
+    Returns:
+        torch.Tensor: A float tensor of shape `(len(product_ids), 8, len(COLS_ORDER)), 
+                      where:
+                    - `len(product_ids)` is the batch size.
+                    - `8` is the fixed history window length.
+                    - `len(COLS_ORDER)` is the number of features per time step.
+    """
+        
     # This will only work if all product series are same length
     # WHICH they HAVE TO BE!
     temp_list = []
@@ -53,7 +66,26 @@ def df_to_tensor(df: pd.DataFrame, products_ids: list):
     return ts
     
 
-def batch_extraction(df: pd.DataFrame, products_ids: list[int]):
+def batch_extraction(df: pd.DataFrame, products_ids: list[int]) -> torch.Tensor:
+    """
+    Preprocess raw transaction data into a batched tensor of time series windows.
+    This function transforms and aggregates the input DataFrame, grouping by 
+    product category and price, resampling weekly, engineering temporal and 
+    rolling features, and finally extracting the last 8 weeks of data per SKU. 
+    The result is converted into a 3D tensor via `df_to_tensor`.
+
+    Args:
+        df (pd.DataFrame): Raw input DataFrame containing transaction-level data.
+        products_ids (list[int]): List of integer product IDs specifying the order 
+        in which SKUs should appear in the output tensor. IDs must correspond to 
+        the enumeration order of `IDS_MAP.values()`.
+
+    Returns:
+        torch.Tensor: A float tensor of shape `(len(product_ids), 8, num_features), 
+                      containing the last 8 weeks of engineered features for each 
+                      SKU ID.
+    """
+    
     df["Date"] = pd.DatetimeIndex(df["Date"])
     # Renaming Columns
     new_column_names = []
@@ -99,7 +131,27 @@ def batch_extraction(df: pd.DataFrame, products_ids: list[int]):
     return df_to_tensor(df_final, products_ids)
     
 
-def batch_preprocessing(x, y, batch_first=True):
+def batch_preprocessing(x: dict, y: tuple, batch_first: bool=True) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Prepare a batch of encoder input features and target values for model consumption.
+    This function extracts the continuous encoder inputs from the feature dict `x`
+    and the target tensor from `y`. It optionally permutes the encoder input
+    dimensions if the model expects sequence-first format.
+
+    Args:
+        x (dict): Dictionary of model inputs. Must contain: "encoder_cont"`
+        y (tuple): Tuple containing the target tensor(s). The first element 
+                   y[0] should be a tensor of shape (batch_size, ...) 
+                   representing the desired labels.
+        batch_first (bool, optional): If `True` (default), returns `encoder_cont` 
+                                      as-is (batch_size, seq_len, num_features).
+                                      If `False`, permutes to 
+                                      (seq_len, batch_size, num_features).
+
+    Returns:
+        tuple[torch.Tensor, torch.Tensor]: The encoder input tensor and 
+                                           The squeezed target tensor
+    """
     x_input = x["encoder_cont"]
     y_input = torch.squeeze(y[0])
     if batch_first == False:
@@ -107,18 +159,46 @@ def batch_preprocessing(x, y, batch_first=True):
     return x_input, y_input
 
 
-def train_and_validate(
-    model, 
-    loss_criterion, 
-    optimizer, 
-    epochs, 
-    train_data_loader, 
-    valid_data_loader, 
-    device,
-    save_dir,
-    log_dir,
-    model_name
-):
+def train_and_validate(model: torch.nn.Module, 
+                       loss_criterion: callable, 
+                       optimizer: torch.optim.Optimizer, 
+                       epochs: int, 
+                       train_data_loader: torch.utils.data.DataLoader, 
+                       valid_data_loader: torch.utils.data.DataLoader, 
+                       device: str, 
+                       save_dir: str,
+                       log_dir: str,
+                       model_name: str) -> tuple[torch.nn.Module, list]:
+    """
+    Train a PyTorch model and validate it each epoch, logging metrics and saving 
+    the best model. This function handles the training and validation loops for 
+    a given model. It records training and validation losses to TensorBoard, 
+    saves the model weights whenever validation loss improves, and returns the 
+    trained model along with the loss history.
+    
+    Args:
+        model (torch.nn.Module): The PyTorch model to train.
+        loss_criterion (function): Loss function (e.g., torch.nn.MSELoss())
+        optimizer (torch.optim.Optimizer): Optimizer configured with model 
+                                           parameters (e.g., Adam, SGD)
+        epochs (int): Number of training epochs.
+        train_data_loader (torch.utils.data.DataLoader): DataLoader for the 
+                                                         training set.
+        valid_data_loader (torch.utils.data.DataLoader): DataLoader for the 
+                                                         validation set.
+        device (str): Device on which to perform computation 
+                      (e.g., `torch.device("cuda")` or `torch.device("cpu")`).
+        save_dir (str): Directory path where the best model checkpoint will 
+                        be saved.
+        log_dir (str): Directory path for TensorBoard logs.
+        model_name (str): Base name for saved model files (will be saved as 
+                         `<save_dir>/<model_name>.pt`).
+
+    Returns:
+        model (torch.nn.Module): The model after training, moved to the specified 
+                                 device.
+        history (list): List of `(train_loss, valid_loss)` for each epoch.
+    """
     writer = SummaryWriter(log_dir=log_dir+"/tensorboard_log")
     history = []
     best_loss = np.inf 

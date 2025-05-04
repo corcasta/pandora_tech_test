@@ -21,12 +21,29 @@ MAX_PREDICTION_LENGTH = 4
 BATCH_SIZE = 4
 EPOCHS = 100
 LEARNING_RATE = 0.001
-#DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # DATA PARAMS
 DATASET_PATH = PROJECT_ROOT + "/data"
 
-def log_training_state(log_dir: str, train_df: pd.DataFrame, valid_df: pd.DataFrame, train_dataset: TimeSeriesDataSet):
+def log_training_state(log_dir: str, train_df: pd.DataFrame, valid_df: pd.DataFrame, 
+                       train_dataset: TimeSeriesDataSet) -> None:
+    """
+    Log training configuration, dataset schemas, and model parameters to a JSON file.
+    This function gathers key training parameters, dataset schema information,
+    and time-varying feature definitions from the provided TimeSeriesDataSet,
+    and writes them to `train_state.json` in the specified log directory.
+
+    Args:
+        log_dir (str): Directory path where the train_state.json file will be saved.
+        train_df (pd.DataFrame): Training DataFrame. Its column names and dtypes will 
+                                 be recorded.
+        valid_df (pd.DataFrame): Validation DataFrame. Its column names and dtypes 
+                                 will be recorded.
+        train_dataset (TimeSeriesDataSet): A PyTorch Forecasting `TimeSeriesDataSet` 
+                                           instance. Used to extract:
+                                           `time_varying_unknown_reals`: list of 
+                                           real-valued features not known in advance.
+    """                             
     td = train_dataset.get_parameters()
     info = {
         "train_params":{
