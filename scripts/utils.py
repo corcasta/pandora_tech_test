@@ -1,9 +1,10 @@
-import os, sys
-proj_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if proj_root not in sys.path:
-    sys.path.insert(0, proj_root)
-    
+#import os, sys
+#PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+#if PROJECT_ROOT not in sys.path:
+#    sys.path.insert(0, PROJECT_ROOT)
+
 from torch.utils.tensorboard import SummaryWriter
+from config import PROJECT_ROOT
 from torch import nn, optim
 from tqdm import tqdm
 import pandas as pd
