@@ -67,7 +67,7 @@ Ideally, for a retailer like Pandora, forecasting should cover 8–16 weeks to e
 - Weekly aggregation reveals more meaningful patterns, providing greater business value.
 
 ## ⚙️ Feature Engineering
-These features are fed to the model for inference. The aggregation level at this point is weekly.
+These features are fed to the model for inference. The aggregation level at this point is weekly. Together they help the model learn hidden relations, particularly the sliding window features, they outline clear periodicity and trends in some products. As a result the model can forecast pretty decent.
 | Feature         | Description                                                        |
 |-----------------|--------------------------------------------------------------------|
 | Total_Amount    | Total sales (e.g., price × quantity)                               |
@@ -95,3 +95,108 @@ A simple Temporal Convolutional Network (TCN) was used for forecasting because:
 - It’s effective at detecting temporal patterns.
 - It uses dilated causal convolutions to capture dependencies over time.
 ![tcn](https://github.com/corcasta/pandora_tech_test/blob/dev/images/tcn.png?raw=true)
+
+
+## 🔌 API Reference
+**Note**: The API was intentionally kept simple, with a single route to retrieve forecast information. Currently, a single model has been trained to predict forecasts at the SKU level, which results in a straightforward request format.
+
+To make the process easier for the client, the API accepts a CSV file upload as input. This approach simplifies data handling, but comes with two main considerations:
+- **Input requirements**: The uploaded CSV must contain exactly 8 weeks of historical sales data for each product to ensure accurate forecasting.
+- **Product identification**: Clients must refer to a predefined list of product IDs to correctly populate the product_id field in the metadata. This mapping ensures clarity about which product is being forecasted when interpreting the results.
+
+These trade-offs were made to balance simplicity on the client side with accuracy and clarity in the forecasting output.
+#### Get all items
+
+```http
+  POST /predict
+```
+
+
+**Form Data Parameters**
+
+| Name       | Type   | Required | Description                                                                                                    |
+| ---------- | ------ | -------- | -------------------------------------------------------------------------------------------------------------- |
+| `file`     | file   | Yes      | CSV file containing **exactly 8 rows** of continuous historical weekly sales for **EACH** product. Field name **must** be `file`.               |
+| `metadata` | string | Yes      | JSON-encoded string with array describing each SKU in the CSV. See “Metadata JSON” below for schema. |
+
+#### file
+The CSV file must contain 8 weeks of historical data for each product. The granularity and the fields of the file must be the exact same as the excel provided in the email.
+
+#### Metadata JSON
+
+The `metadata` field is a JSON string with these keys. The IDs must be the same as the ones mentioned at the beginning.
+
+```json
+"metadata": {
+  "product_id": [0],
+}
+```
+Example when requesting a forecast for 3 products
+
+```json
+"metadata": {
+  "product_id": [2, 5, 8],
+}
+```
+
+Python API request example
+```python
+url = "http://localhost:8000/predict"
+data = {
+    'metadata': json.dumps({
+        "product_id": [0]
+    })
+}
+files = {
+    "file": (
+        "data.csv",           
+        open("/home/corcasta/projects/pandora_interview/data/sales_data.csv", "rb"), 
+        "text/csv"              
+    )
+}
+response = requests.post(url, data=data, files=files)
+```
+Response example format:
+```json
+{'1': {'week_0': '61.450638',
+  'week_1': '109.70733',
+  'week_2': '61.97812',
+  'week_3': '0.0'},
+
+'2': {'week_0': '61.450638',
+  'week_1': '109.70733',
+  'week_2': '61.97812',
+  'week_3': '0.0'}}
+```
+
+## 🧩 Scaling to Production
+The beauty of using LitServe lies in how effortlessly it scales in production. You can simply define the number of workers and specify how many model instances to run and on which devices (CPU or GPU). Distributed execution across multiple machines is also supported just enable the appropriate settings.
+
+**LitServe** also allows flexible request processing strategies: you can choose between batching, parallel execution, or streaming, depending on your needs.
+
+The optimal approach to scaling a forecasting model depends on several factors, such as:
+
+- Who will be consuming the model's predictions
+- How much data will be sent per request
+- What resources are available for deployment
+
+It's also important to consider operational constraints, such as hardware limitations, budget, and whether the model needs to run continuously or only at scheduled intervals.
+
+The following example scales LitServe to eight parallel workers on a 4 GPU machine, with each of the 4 GPUs serving two copies of the model.
+Is as simple as that.
+```python
+server = ls.LitServer(api, devices=4, workers_per_device=2)
+```
+For more information I recommend to visit the official page of **LitServe** :)
+
+## 🛠️ Improvements
+- Currently, the trained TCN model does not support probabilistic forecasting. In forecasting, having upper and lower bounds is beneficial, as it reinforces confidence that the model operates within a certain range. The downside of implementing this is that training multiple deep learning models increases both training time and computational resource usage.
+
+
+- The current API only predicts demand for individual SKUs. A secondary endpoint could be added to return aggregated forecasts by category.
+
+- Add flexibility to specify how many weeks into the future to forecast.
+
+- Expand the library of available models and allow users to select a preferred model for forecasting.
+
+- Implement integration tests. Due to personal time constraints, this will be addressed in the future.
