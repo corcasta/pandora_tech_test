@@ -191,6 +191,18 @@ Response example format:
 - The current implementation store api metric logs and train state logs.
 - The code implementation allows to swap to any model or architecture as long as the output characteristics stays the same.
 
+## 🛠️ Improvements
+- Currently, the trained TCN model does not support probabilistic forecasting. In forecasting, having upper and lower bounds is beneficial, as it reinforces confidence that the model operates within a certain range. The downside of implementing this is that training multiple deep learning models increases both training time and computational resource usage.
+
+
+- The current API only predicts demand for individual SKUs. A secondary endpoint could be added to return aggregated forecasts by category.
+
+- Add flexibility to specify how many weeks into the future to forecast.
+
+- Expand the library of available models and allow users to select a preferred model for forecasting.
+
+- Implement integration tests. Due to personal time constraints, this will be addressed in the future.
+
 ## 🔍 Production Enhancements
 To keep track of model states, datasets, metrics, and more, a useful tool is MLflow. It simplifies version control for models, making reproducibility more efficient. Another improvement would be to visualize the performance of each model through meaningful charts and dashboards, helping to better understand and compare results.
 
@@ -214,14 +226,3 @@ server = ls.LitServer(api, devices=4, workers_per_device=2)
 ```
 For more information I recommend to visit the official page of **LitServe** :)
 
-## 🛠️ Improvements
-- Currently, the trained TCN model does not support probabilistic forecasting. In forecasting, having upper and lower bounds is beneficial, as it reinforces confidence that the model operates within a certain range. The downside of implementing this is that training multiple deep learning models increases both training time and computational resource usage.
-
-
-- The current API only predicts demand for individual SKUs. A secondary endpoint could be added to return aggregated forecasts by category.
-
-- Add flexibility to specify how many weeks into the future to forecast.
-
-- Expand the library of available models and allow users to select a preferred model for forecasting.
-
-- Implement integration tests. Due to personal time constraints, this will be addressed in the future.
